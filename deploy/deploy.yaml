@@ -1,0 +1,63 @@
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+    name: mysql-to-prometheus
+spec:
+    replicas: 1
+    minReadySeconds: 15
+    strategy:
+    type: RollingUpdate
+    rollingUpdate:
+        maxUnavailable: 1
+        maxSurge: 1
+    template:
+    metadata:
+        labels:
+        app: mysql-to-prometheus
+    spec:
+#      hostNetwork: true
+        containers:
+        - name: mysql-to-prometheus
+        image: siangyeh8818/mysql-to-prometheus:test-v13
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8088
+            protocol: TCP
+            env:
+            - name: MYSQL_ADDRESS
+                value: "<IP>:<PORT>"
+                # example : 127.0.0.1:3306
+            - name: MYSQL_USER
+                value: "<USER>"
+                #examplde: root
+            - name: MYSQL_PASSWORD
+                value: "<PASSWORD>"
+            - name: MYSQL_DATABASE
+                value: "<DATABASE_NAME>"
+                #information_schema
+            - name: INTERNAL_TIME_TO_MYSQL
+                value: "-60m"
+                #internal time to get sql data
+            volumeMounts:
+            - mountPath: /usr/share/zoneinfo
+                name: timezone
+            volumes:
+            - name: timezone
+            hostPath:
+                path: /usr/share/zoneinfo
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-to-prometheus
+  labels:
+    app: mysql-to-prometheus
+spec:
+  ports:
+  - port: 8088
+    targetPort: 8088
+  selector:
+    app: mysql-to-prometheus
+  sessionAffinity: None
+  type: ClusterIP
