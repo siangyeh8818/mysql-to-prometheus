@@ -2,23 +2,24 @@ package main
 
 import (
 	"log"
-	"os"
 
-	db "github.com/siangyeh8818/mysql-to-prometheus/internal/mysql"
+	"github.com/prometheus/client_golang/prometheus"
+
+	exporter "github.com/siangyeh8818/mysql-to-prometheus/internal/exporter"
+	lib "github.com/siangyeh8818/mysql-to-prometheus/internal/lib"
 )
+
+var metrics map[string]*prometheus.Desc
+var appConfig lib.BaseConfig
+
+func init() {
+	metrics = exporter.AddMetrics()
+}
 
 func main() {
 	log.Println("Exporter is start ro running")
-	account_email := os.Getenv("ACCOUNT_EMAIL")
-	log.Printf("ACCOUNT_EMAIL : %s \n", account_email)
 
-	account_password := os.Getenv("ACCOUNT_PASSWORD")
-	log.Printf("ACCOUNT_PASSWORD : %s \n", account_password)
-
-	interval_time := os.Getenv("SELEIUM_INTERNAL_TIME")
-	log.Printf("SELEIUM_INTERNAL_TIME : %s \n", interval_time)
-	db.DB_Handler()
-
+	//db.DB_Handler()
 	/*
 
 		go func() {
@@ -27,4 +28,15 @@ func main() {
 
 		server.Run_Exporter_Server()
 	*/
+
+	// init Exporter
+	exp := exporter.Exporter{
+		DBMetrics: metrics,
+		Config:    appConfig,
+		//Cache:     appCache,
+		//K8sClient: k8sclient,
+	}
+	// start the server
+	exporter.NewServer(exp).Start()
+
 }
