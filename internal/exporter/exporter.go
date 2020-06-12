@@ -88,9 +88,9 @@ func NewExporter(metricsPrefix string) *Exporter {
 */
 
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
-
+	log.Println("-------Collect-----------")
 	data, err := e.gatherData()
-
+	//log.Println(data)
 	if err != nil {
 		log.Fatalf("Error gathering Data from Mysql server: %v", err)
 		//log.Errorf("Error gathering Data from Mysql server: %v", err)

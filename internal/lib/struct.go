@@ -7,14 +7,16 @@ import (
 type Data []Datum
 
 type Datum struct {
-	MatchID       uint64
-	SpecialID     string
-	LocationID    string
-	Location      string
-	Score         int
-	StateCategory string
-	UpdatedAt     time.Time
-	DBtable       string
+	MatchID         uint64
+	SpecialID       string
+	LocationID      string
+	Location        string
+	Score           int
+	StateCategory   string
+	UpdatedAt       time.Time
+	DBtable         string
+	StreamAPIStatus int
+	SportName       string
 }
 
 type BaseConfig struct {
@@ -34,12 +36,20 @@ func (instance *Datum) SetSpecialID(id string) {
 	instance.SpecialID = id
 }
 
+func (instance *Datum) SetStreamAPIStatus(status int) {
+	instance.StreamAPIStatus = status
+}
+
 func (instance *Datum) SetLocationID(id string) {
 	instance.LocationID = id
 }
 
 func (instance *Datum) SetLocation(location string) {
 	instance.Location = location
+}
+
+func (instance *Datum) SetSportName(name string) {
+	instance.SportName = name
 }
 
 func (instance *Datum) SetScore(score int) {

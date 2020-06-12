@@ -62,17 +62,20 @@ func DB_Handler() lib.Data {
 
 	wg := sync.WaitGroup{}
 	wg.Add(3)
+
 	go func() {
 		//armenia_data <- query(&wg, db, "SELECT `matchId`,`armeniaId`,`locationId`,`score`,`stateCategory`,`updated_at` FROM stream_armenia_status", "stream_armenia_status")
-		armenia_data <- query(&wg, db, "SELECT `matchId`,`armeniaId`,`locationId`,`score`,`stateCategory`,`updated_at` FROM stream_armenia_status WHERE `updated_at` BETWEEN '"+now_5min.In(local1).Format("2006-01-02 15:04:05")+"' AND '"+now.In(local1).Format("2006-01-02 15:04:05")+"'", "stream_armenia_status")
+		armenia_data <- query(&wg, db, "SELECT COALESCE(m.`sportName`, 'UnKnown') sportName,m.`armeniaApiStatus`,m.`sportId`,m.gameStageType, s.`matchId`,s.`armeniaId` ,s.`locationId`, s.`stateCategory`, s.`score`,s.`updated_at` FROM stream_armenia_status s LEFT JOIN matches m ON m.matchId=s.matchId LEFT JOIN team h ON h.teamId=m.hTeamId LEFT JOIN team a ON a.teamId=m.aTeamId WHERE s.`updated_at` BETWEEN '"+now_5min.In(local1).Format("2006-01-02 15:04:05")+"' AND '"+now.In(local1).Format("2006-01-02 15:04:05")+"' GROUP BY s.matchId ", "stream_armenia_status")
 	}()
+
 	go func() {
-		//nami_data <- query(&wg, db, "SELECT `matchId`,`namiId`,`locationId`,`score`,`stateCategory`,`updated_at` FROM stream_nami_status", "stream_nami_status")
-		nami_data <- query(&wg, db, "SELECT `matchId`,`namiId`,`locationId`,`score`,`stateCategory`,`updated_at` FROM stream_nami_status WHERE `updated_at` BETWEEN '"+now_5min.In(local1).Format("2006-01-02 15:04:05")+"' AND '"+now.In(local1).Format("2006-01-02 15:04:05")+"'", "stream_nami_status")
+		//nami_data <- query(&wg, db, "SELECT `matchId`,`namiId`,`locationId`,`score`,`stateCategory`,`updated_at` FROM stream_nami_status WHERE `updated_at` BETWEEN '"+now_5min.In(local1).Format("2006-01-02 15:04:05")+"' AND '"+now.In(local1).Format("2006-01-02 15:04:05")+"'", "stream_nami_status")
+		nami_data <- query(&wg, db, "SELECT COALESCE(m.`sportName`, 'UnKnown') sportName,m.`streamApiState`,m.`sportId`,m.gameStageType, s.`matchId`,s.`namiId` ,s.`locationId`, s.`stateCategory`, s.`score`,s.`updated_at` FROM stream_nami_status s LEFT JOIN matches m ON m.matchId=s.matchId WHERE s.`updated_at` BETWEEN '"+now_5min.In(local1).Format("2006-01-02 15:04:05")+"' AND '"+now.In(local1).Format("2006-01-02 15:04:05")+"' GROUP BY s.matchId ", "stream_nami_status")
 	}()
+
 	go func() {
-		//room_data <- query(&wg, db, "SELECT `matchId`,`roomId`,`locationId`,`score`,`stateCategory`,`updated_at` FROM stream_room_status", "stream_room_status")
-		room_data <- query(&wg, db, "SELECT `matchId`,`roomId`,`locationId`,`score`,`stateCategory`,`updated_at` FROM stream_room_status WHERE `updated_at` BETWEEN '"+now_5min.In(local1).Format("2006-01-02 15:04:05")+"' AND '"+now.In(local1).Format("2006-01-02 15:04:05")+"'", "stream_room_status")
+		room_data <- query(&wg, db, "SELECT COALESCE(m.`sportName`, 'UnKnown') sportName,s.`matchId`,s.`roomId`,s.`locationId`,s.`score`,s.`stateCategory`,s.`updated_at` FROM stream_room_status s LEFT JOIN matches m ON m.matchId=s.matchId  LEFT JOIN team h ON h.teamId=m.hTeamId LEFT JOIN team a ON a.teamId=m.aTeamId  WHERE s.`updated_at` BETWEEN '"+now_5min.In(local1).Format("2006-01-02 15:04:05")+"' AND '"+now.In(local1).Format("2006-01-02 15:04:05")+"'  GROUP BY s.matchId ", "stream_room_status")
+
 	}()
 
 	wg.Wait()
@@ -130,6 +133,11 @@ func query(wg *sync.WaitGroup, db *sql.DB, sqlexpression string, table string) l
 	var statecategory string
 	var score int
 	var update_time sql.NullTime
+	var sportId sql.NullInt64
+	var sportName string
+	var gameStageType sql.NullInt64
+	var streamApiState sql.NullInt64
+
 	//var kps string
 	//var ip string
 	log.Println("------query(db *sql.DB)---------")
@@ -143,23 +151,73 @@ func query(wg *sync.WaitGroup, db *sql.DB, sqlexpression string, table string) l
 	defer rows.Close()
 
 	//log.Println(rows.ColumnTypes())
-	for rows.Next() {
-		//SELECT `matchId`,`roomId`,`locationId`,`score`,`stateCategory`,`updated_at` FROM stream_room_status`
-		var tempdatum lib.Datum
-		if err := rows.Scan(&matchId, &spacialID, &locationId, &score, &statecategory, &update_time); err != nil {
-			log.Println("------error---------")
-			log.Fatal(err)
+	switch table {
+	case "stream_armenia_status":
+		for rows.Next() {
+
+			if err := rows.Scan(&sportName, &streamApiState, &sportId, &gameStageType, &matchId, &spacialID, &locationId, &score, &statecategory, &update_time); err != nil {
+				log.Println("------error---------")
+				log.Fatal(err)
+			}
+			fmt.Printf("sportName : %s ,armeniaApiStatus : %v , sportId: %v ,  gameStageType : %v , matchId :%d ,roomId: %s ,locationId: %s , state: %v ,score: %v , updated_at: %v \n", sportName, streamApiState.Int64, sportId.Int64, gameStageType.Int64, matchId, spacialID, locationId, statecategory, score, update_time)
+			var tempdatum lib.Datum
+			tempdatum.SetLocationID(locationId)
+			tempdatum.SetLocation(locationMapping[locationId])
+			tempdatum.SetMatchID(matchId)
+			tempdatum.SetSpecialID(spacialID)
+			tempdatum.SetStateCategory(statecategory)
+			tempdatum.SetScore(score)
+			tempdatum.SetDBtable(table)
+			tempdatum.SetSportName(sportName)
+			//判段streamApiState
+			tempdatum.SetStreamAPIStatus(identifyArmeniaStatus(streamApiState))
+
+			data2 = append(data2, tempdatum)
 		}
-		fmt.Printf("matchId :%d ,roomId: %s ,locationId: %s , state: %v ,score: %v , updated_at: %v \n", matchId, spacialID, locationId, statecategory, score, update_time)
-		tempdatum.SetLocationID(locationId)
-		tempdatum.SetLocation(locationMapping[locationId])
-		tempdatum.SetMatchID(matchId)
-		tempdatum.SetSpecialID(spacialID)
-		tempdatum.SetStateCategory(statecategory)
-		tempdatum.SetScore(score)
-		tempdatum.SetDBtable(table)
-		data2 = append(data2, tempdatum)
+	case "stream_nami_status":
+		for rows.Next() {
+
+			if err := rows.Scan(&sportName, &streamApiState, &sportId, &gameStageType, &matchId, &spacialID, &locationId, &score, &statecategory, &update_time); err != nil {
+				log.Println("------error---------")
+				log.Fatal(err)
+			}
+			fmt.Printf("sportName : %s ,streamApiState : %v , sportId: %v ,  gameStageType : %v , matchId :%d ,roomId: %s ,locationId: %s , state: %v ,score: %v , updated_at: %v \n", sportName, streamApiState.Int64, sportId.Int64, gameStageType.Int64, matchId, spacialID, locationId, statecategory, score, update_time)
+			var tempdatum lib.Datum
+			tempdatum.SetLocationID(locationId)
+			tempdatum.SetLocation(locationMapping[locationId])
+			tempdatum.SetMatchID(matchId)
+			tempdatum.SetSpecialID(spacialID)
+			tempdatum.SetStateCategory(statecategory)
+			tempdatum.SetScore(score)
+			tempdatum.SetDBtable(table)
+			tempdatum.SetSportName(sportName)
+			//判段streamApiState
+			tempdatum.SetStreamAPIStatus(identifyNamiStatus(streamApiState, sportId, gameStageType))
+
+			data2 = append(data2, tempdatum)
+		}
+	case "stream_room_status":
+		for rows.Next() {
+			if err := rows.Scan(&sportName, &matchId, &spacialID, &locationId, &score, &statecategory, &update_time); err != nil {
+				log.Println("------error---------")
+				log.Fatal(err)
+			}
+			fmt.Printf("sportName : %s ,matchId :%d ,roomId: %s ,locationId: %s , state: %v ,score: %v , updated_at: %v \n", sportName, matchId, spacialID, locationId, statecategory, score, update_time)
+
+			var tempdatum lib.Datum
+			tempdatum.SetLocationID(locationId)
+			tempdatum.SetLocation(locationMapping[locationId])
+			tempdatum.SetMatchID(matchId)
+			tempdatum.SetSpecialID(spacialID)
+			tempdatum.SetStateCategory(statecategory)
+			tempdatum.SetScore(score)
+			tempdatum.SetDBtable(table)
+			tempdatum.SetSportName(sportName)
+			tempdatum.SetStreamAPIStatus(1)
+			data2 = append(data2, tempdatum)
+		}
 	}
+
 	end := time.Now()
 	log.Println("方式1 query total time:", end.Sub(start).Seconds())
 	return data2
@@ -187,4 +245,57 @@ func querylocation(db *sql.DB) map[string]string {
 	end := time.Now()
 	log.Println(" query total time:", end.Sub(start).Seconds())
 	return m
+}
+
+func identifyArmeniaStatus(identifyvalue1 sql.NullInt64) int {
+	//0 不可播
+	//1 可播
+	//nullValue := sql.NullInt64{}
+	var status int
+	if identifyvalue1.Valid == true {
+		if identifyvalue1.Int64 == 3 {
+			status = 1
+		} else if identifyvalue1.Int64 != 3 {
+			status = 0
+		}
+	} else if identifyvalue1.Valid == false {
+		//其實還不清楚armeniaApiStatus 為NULL ,該如何定義
+		status = 0
+	}
+	return status
+}
+
+func identifyNamiStatus(streamApiState sql.NullInt64, sportId sql.NullInt64, gameStageType sql.NullInt64) int {
+	//0不可播
+	//1可以播
+
+	var status int
+
+	if streamApiState.Valid == false {
+		if sportId.Int64 == 1 { //sportId=1足球
+			// gameStageType=2~7比賽進行中
+			if gameStageType.Int64 >= 2 && gameStageType.Int64 <= 7 {
+				status = 1
+			} else {
+				status = 0
+			}
+		} else if sportId.Int64 == 2 { //sportId=籃球
+			//gameStageType=2~9比賽進行中
+			if gameStageType.Int64 >= 2 && gameStageType.Int64 <= 9 {
+				status = 1
+			} else {
+				status = 0
+			}
+		}
+	} else if streamApiState.Valid == true {
+		//騰躍api給的狀態 1:可播、0:不可播
+		if streamApiState.Int64 == 0 {
+			status = 0
+		} else if streamApiState.Int64 == 1 {
+			status = 1
+		}
+	}
+
+	return status
+
 }
