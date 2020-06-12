@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -65,16 +66,16 @@ func DB_Handler() lib.Data {
 
 	go func() {
 		//armenia_data <- query(&wg, db, "SELECT `matchId`,`armeniaId`,`locationId`,`score`,`stateCategory`,`updated_at` FROM stream_armenia_status", "stream_armenia_status")
-		armenia_data <- query(&wg, db, "SELECT COALESCE(m.`sportName`, 'UnKnown') sportName,m.`armeniaApiStatus`,m.`sportId`,m.gameStageType, s.`matchId`,s.`armeniaId` ,s.`locationId`, s.`stateCategory`, s.`score`,s.`updated_at` FROM stream_armenia_status s LEFT JOIN matches m ON m.matchId=s.matchId LEFT JOIN team h ON h.teamId=m.hTeamId LEFT JOIN team a ON a.teamId=m.aTeamId WHERE s.`updated_at` BETWEEN '"+now_5min.In(local1).Format("2006-01-02 15:04:05")+"' AND '"+now.In(local1).Format("2006-01-02 15:04:05")+"' GROUP BY s.matchId ", "stream_armenia_status")
+		armenia_data <- query(&wg, db, "SELECT COALESCE(m.`sportName`, 'UnKnown') sportName,m.`armeniaApiStatus`,m.`sportId`,m.gameStageType, s.`matchId`,s.`armeniaId` ,s.`locationId`, s.`stateCategory`, s.`score`,s.`updated_at` ,s.`streamId` FROM stream_armenia_status s LEFT JOIN matches m ON m.matchId=s.matchId LEFT JOIN team h ON h.teamId=m.hTeamId LEFT JOIN team a ON a.teamId=m.aTeamId WHERE s.`updated_at` BETWEEN '"+now_5min.In(local1).Format("2006-01-02 15:04:05")+"' AND '"+now.In(local1).Format("2006-01-02 15:04:05")+"'", "stream_armenia_status")
 	}()
 
 	go func() {
 		//nami_data <- query(&wg, db, "SELECT `matchId`,`namiId`,`locationId`,`score`,`stateCategory`,`updated_at` FROM stream_nami_status WHERE `updated_at` BETWEEN '"+now_5min.In(local1).Format("2006-01-02 15:04:05")+"' AND '"+now.In(local1).Format("2006-01-02 15:04:05")+"'", "stream_nami_status")
-		nami_data <- query(&wg, db, "SELECT COALESCE(m.`sportName`, 'UnKnown') sportName,m.`streamApiState`,m.`sportId`,m.gameStageType, s.`matchId`,s.`namiId` ,s.`locationId`, s.`stateCategory`, s.`score`,s.`updated_at` FROM stream_nami_status s LEFT JOIN matches m ON m.matchId=s.matchId WHERE s.`updated_at` BETWEEN '"+now_5min.In(local1).Format("2006-01-02 15:04:05")+"' AND '"+now.In(local1).Format("2006-01-02 15:04:05")+"' GROUP BY s.matchId ", "stream_nami_status")
+		nami_data <- query(&wg, db, "SELECT COALESCE(m.`sportName`, 'UnKnown') sportName,m.`streamApiState`,m.`sportId`,m.gameStageType, s.`matchId`,s.`namiId` ,s.`locationId`, s.`stateCategory`, s.`score`,s.`updated_at` ,s.`streamId` FROM stream_nami_status s LEFT JOIN matches m ON m.matchId=s.matchId WHERE s.`updated_at` BETWEEN '"+now_5min.In(local1).Format("2006-01-02 15:04:05")+"' AND '"+now.In(local1).Format("2006-01-02 15:04:05")+"'", "stream_nami_status")
 	}()
 
 	go func() {
-		room_data <- query(&wg, db, "SELECT COALESCE(m.`sportName`, 'UnKnown') sportName,s.`matchId`,s.`roomId`,s.`locationId`,s.`score`,s.`stateCategory`,s.`updated_at` FROM stream_room_status s LEFT JOIN matches m ON m.matchId=s.matchId  LEFT JOIN team h ON h.teamId=m.hTeamId LEFT JOIN team a ON a.teamId=m.aTeamId  WHERE s.`updated_at` BETWEEN '"+now_5min.In(local1).Format("2006-01-02 15:04:05")+"' AND '"+now.In(local1).Format("2006-01-02 15:04:05")+"'  GROUP BY s.matchId ", "stream_room_status")
+		room_data <- query(&wg, db, "SELECT COALESCE(m.`sportName`, 'UnKnown') sportName,s.`matchId`,s.`roomId`,s.`locationId`,s.`score`,s.`stateCategory`,s.`updated_at`,s.`streamId` FROM stream_room_status s LEFT JOIN matches m ON m.matchId=s.matchId  LEFT JOIN team h ON h.teamId=m.hTeamId LEFT JOIN team a ON a.teamId=m.aTeamId  WHERE s.`updated_at` BETWEEN '"+now_5min.In(local1).Format("2006-01-02 15:04:05")+"' AND '"+now.In(local1).Format("2006-01-02 15:04:05")+"'", "stream_room_status")
 
 	}()
 
@@ -137,6 +138,7 @@ func query(wg *sync.WaitGroup, db *sql.DB, sqlexpression string, table string) l
 	var sportName string
 	var gameStageType sql.NullInt64
 	var streamApiState sql.NullInt64
+	var prikey sql.NullInt64
 
 	//var kps string
 	//var ip string
@@ -155,11 +157,11 @@ func query(wg *sync.WaitGroup, db *sql.DB, sqlexpression string, table string) l
 	case "stream_armenia_status":
 		for rows.Next() {
 
-			if err := rows.Scan(&sportName, &streamApiState, &sportId, &gameStageType, &matchId, &spacialID, &locationId, &score, &statecategory, &update_time); err != nil {
+			if err := rows.Scan(&sportName, &streamApiState, &sportId, &gameStageType, &matchId, &spacialID, &locationId, &statecategory, &score, &update_time, &prikey); err != nil {
 				log.Println("------error---------")
 				log.Fatal(err)
 			}
-			fmt.Printf("sportName : %s ,armeniaApiStatus : %v , sportId: %v ,  gameStageType : %v , matchId :%d ,roomId: %s ,locationId: %s , state: %v ,score: %v , updated_at: %v \n", sportName, streamApiState.Int64, sportId.Int64, gameStageType.Int64, matchId, spacialID, locationId, statecategory, score, update_time)
+			fmt.Printf("prikey: %v, sportName : %s ,armeniaApiStatus : %v , sportId: %v ,  gameStageType : %v , matchId :%d ,roomId: %s ,locationId: %s , statecategory: %v ,score: %v , updated_at: %v \n", prikey.Int64, sportName, streamApiState.Int64, sportId.Int64, gameStageType.Int64, matchId, spacialID, locationId, statecategory, score, update_time)
 			var tempdatum lib.Datum
 			tempdatum.SetLocationID(locationId)
 			tempdatum.SetLocation(locationMapping[locationId])
@@ -168,6 +170,7 @@ func query(wg *sync.WaitGroup, db *sql.DB, sqlexpression string, table string) l
 			tempdatum.SetStateCategory(statecategory)
 			tempdatum.SetScore(score)
 			tempdatum.SetDBtable(table)
+			tempdatum.SetPriKey(strconv.FormatInt(prikey.Int64, 10))
 			tempdatum.SetSportName(sportName)
 			//判段streamApiState
 			tempdatum.SetStreamAPIStatus(identifyArmeniaStatus(streamApiState))
@@ -176,12 +179,11 @@ func query(wg *sync.WaitGroup, db *sql.DB, sqlexpression string, table string) l
 		}
 	case "stream_nami_status":
 		for rows.Next() {
-
-			if err := rows.Scan(&sportName, &streamApiState, &sportId, &gameStageType, &matchId, &spacialID, &locationId, &score, &statecategory, &update_time); err != nil {
+			if err := rows.Scan(&sportName, &streamApiState, &sportId, &gameStageType, &matchId, &spacialID, &locationId, &statecategory, &score, &update_time, &prikey); err != nil {
 				log.Println("------error---------")
 				log.Fatal(err)
 			}
-			fmt.Printf("sportName : %s ,streamApiState : %v , sportId: %v ,  gameStageType : %v , matchId :%d ,roomId: %s ,locationId: %s , state: %v ,score: %v , updated_at: %v \n", sportName, streamApiState.Int64, sportId.Int64, gameStageType.Int64, matchId, spacialID, locationId, statecategory, score, update_time)
+			fmt.Printf("prikey: %v, sportName : %s ,streamApiState : %v , sportId: %v ,  gameStageType : %v , matchId :%d ,roomId: %s ,locationId: %s , statecategory: %v ,score: %v , updated_at: %v \n", prikey.Int64, sportName, streamApiState.Int64, sportId.Int64, gameStageType.Int64, matchId, spacialID, locationId, statecategory, score, update_time)
 			var tempdatum lib.Datum
 			tempdatum.SetLocationID(locationId)
 			tempdatum.SetLocation(locationMapping[locationId])
@@ -190,6 +192,7 @@ func query(wg *sync.WaitGroup, db *sql.DB, sqlexpression string, table string) l
 			tempdatum.SetStateCategory(statecategory)
 			tempdatum.SetScore(score)
 			tempdatum.SetDBtable(table)
+			tempdatum.SetPriKey(strconv.FormatInt(prikey.Int64, 10))
 			tempdatum.SetSportName(sportName)
 			//判段streamApiState
 			tempdatum.SetStreamAPIStatus(identifyNamiStatus(streamApiState, sportId, gameStageType))
@@ -198,11 +201,11 @@ func query(wg *sync.WaitGroup, db *sql.DB, sqlexpression string, table string) l
 		}
 	case "stream_room_status":
 		for rows.Next() {
-			if err := rows.Scan(&sportName, &matchId, &spacialID, &locationId, &score, &statecategory, &update_time); err != nil {
+			if err := rows.Scan(&sportName, &matchId, &spacialID, &locationId, &score, &statecategory, &update_time, &prikey); err != nil {
 				log.Println("------error---------")
 				log.Fatal(err)
 			}
-			fmt.Printf("sportName : %s ,matchId :%d ,roomId: %s ,locationId: %s , state: %v ,score: %v , updated_at: %v \n", sportName, matchId, spacialID, locationId, statecategory, score, update_time)
+			fmt.Printf("prikey: %v, sportName : %s ,matchId :%d ,roomId: %s ,locationId: %s , statecategory: %v ,score: %v , updated_at: %v \n", prikey.Int64, sportName, matchId, spacialID, locationId, statecategory, score, update_time)
 
 			var tempdatum lib.Datum
 			tempdatum.SetLocationID(locationId)
@@ -212,6 +215,7 @@ func query(wg *sync.WaitGroup, db *sql.DB, sqlexpression string, table string) l
 			tempdatum.SetStateCategory(statecategory)
 			tempdatum.SetScore(score)
 			tempdatum.SetDBtable(table)
+			tempdatum.SetPriKey(strconv.FormatInt(prikey.Int64, 10))
 			tempdatum.SetSportName(sportName)
 			tempdatum.SetStreamAPIStatus(1)
 			data2 = append(data2, tempdatum)

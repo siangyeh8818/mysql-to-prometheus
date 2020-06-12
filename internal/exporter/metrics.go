@@ -16,7 +16,7 @@ func AddMetrics() map[string]*prometheus.Desc {
 	DBMetrics["stream_network_Score"] = prometheus.NewDesc(
 		prometheus.BuildFQName("solar", "stream", "network_Score"),
 		"A metric with a constant '0' value labeled by matchId,roomId,locationId from DB table.",
-		[]string{"matchId", "streamId", "location", "stateCategory", "dbtable", "Status", "sportName"}, nil,
+		[]string{"matchId", "streamId", "location", "stateCategory", "dbtable", "Status", "sportName", "prikey"}, nil,
 	)
 	/*
 		DBMetrics["Workflows"] = prometheus.NewDesc(
@@ -49,7 +49,7 @@ func (e *Exporter) processMetrics(data lib.Data, ch chan<- prometheus.Metric) er
 		//log.Printf("x.StreamAPIStatus : " + str1)
 		//log.Printf("string(x.StreamAPIStatus) : %s", string(x.StreamAPIStatus))
 		//log.Printf("x.SportName : %s", x.SportName)
-		ch <- prometheus.MustNewConstMetric(e.DBMetrics["stream_network_Score"], prometheus.GaugeValue, float64(x.Score), id, x.SpecialID, x.Location, x.StateCategory, x.DBtable, str1, x.SportName)
+		ch <- prometheus.MustNewConstMetric(e.DBMetrics["stream_network_Score"], prometheus.GaugeValue, float64(x.Score), id, x.SpecialID, x.Location, x.StateCategory, x.DBtable, str1, x.SportName, x.PriKey)
 		//ch <- prometheus.MustNewConstMetric(e.DBMetrics["Workflows"], prometheus.GaugeValue, x.WorkflowSize)
 		//ch <- prometheus.MustNewConstMetric(e.DBMetrics["WorkflowInstances"], prometheus.GaugeValue, x.RunningWorkflowSize, "running", "")
 	}

@@ -17,6 +17,7 @@ type Datum struct {
 	DBtable         string
 	StreamAPIStatus int
 	SportName       string
+	PriKey          string
 }
 
 type BaseConfig struct {
@@ -54,6 +55,9 @@ func (instance *Datum) SetSportName(name string) {
 
 func (instance *Datum) SetScore(score int) {
 	instance.Score = score
+}
+func (instance *Datum) SetPriKey(key string) {
+	instance.PriKey = key
 }
 
 func (instance *Datum) SetStateCategory(category string) {
