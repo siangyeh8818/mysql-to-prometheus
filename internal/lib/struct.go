@@ -18,7 +18,7 @@ type Datum struct {
 	StreamAPIStatus int
 	SportName       string
 	PriKey          string
-	LeagueId        uint64
+	Level           int
 }
 
 type BaseConfig struct {
@@ -34,8 +34,8 @@ func (instance *Datum) SetMatchID(id uint64) {
 	instance.MatchID = id
 }
 
-func (instance *Datum) SetLeagueId(id uint64) {
-	instance.LeagueId = id
+func (instance *Datum) SetLevel(level int) {
+	instance.Level = level
 }
 
 func (instance *Datum) SetSpecialID(id string) {
