@@ -49,7 +49,7 @@ func DB_Handler() lib.Data {
 	nami_data := make(chan lib.Data)
 	//WHERE `updated_at` BETWEEN '2020-05-18 09:20:00.158054 +0000 UTC' AND '2020-05-18 09:25:00.158054 +0000 UTC'
 	now := time.Now()
-	local1, err1 := time.LoadLocation(os.Getenv("TIMEZONEW")) //等同于"UTC"
+	local1, err1 := time.LoadLocation(os.Getenv("TIMEZONE")) //等同于"UTC"
 	if err1 != nil {
 		fmt.Println(err1)
 	}
