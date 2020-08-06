@@ -47,6 +47,7 @@ func DB_Handler() lib.Data {
 	room_data := make(chan lib.Data)
 	armenia_data := make(chan lib.Data)
 	nami_data := make(chan lib.Data)
+	hbird_data := make(chan lib.Data)
 	//WHERE `updated_at` BETWEEN '2020-05-18 09:20:00.158054 +0000 UTC' AND '2020-05-18 09:25:00.158054 +0000 UTC'
 	now := time.Now()
 	local1, err1 := time.LoadLocation(os.Getenv("TIMEZONE")) //等同于"UTC"
@@ -65,7 +66,7 @@ func DB_Handler() lib.Data {
 	//log.Println(now_5min)
 
 	wg := sync.WaitGroup{}
-	wg.Add(3)
+	wg.Add(4)
 
 	go func() {
 		//armenia_data <- query(&wg, db, "SELECT `matchId`,`armeniaId`,`locationId`,`score`,`stateCategory`,`updated_at` FROM stream_armenia_status", "stream_armenia_status")
@@ -81,11 +82,16 @@ func DB_Handler() lib.Data {
 		room_data <- query(&wg, db, "SELECT COALESCE(m.`sportName`, 'UnKnown') sportName,s.`matchId`,s.`roomId`,s.`locationId`,s.`score`,s.`stateCategory`,s.`updated_at`,s.`streamId`,l.`level`  FROM stream_room_status s LEFT JOIN matches m ON m.matchId=s.matchId  LEFT JOIN team h ON h.teamId=m.hTeamId LEFT JOIN team a ON a.teamId=m.aTeamId LEFT JOIN league l ON m.leagueId=l.leagueId AND m.sportId=l.sportId WHERE s.`updated_at` BETWEEN '"+now_5min.In(local1).Format("2006-01-02 15:04:05")+"' AND '"+now.In(local1).Format("2006-01-02 15:04:05")+"'", "stream_room_status")
 
 	}()
+	go func() {
+		hbird_data <- query(&wg, db, "SELECT COALESCE(m.`sportName`, 'UnKnown') sportName,s.`matchId`,s.`hbirdId`,s.`locationId`,s.`score`,s.`stateCategory`,s.`updated_at`,s.`streamId`,l.`level`  FROM stream_hbird_status s LEFT JOIN matches m ON m.matchId=s.matchId  LEFT JOIN team h ON h.teamId=m.hTeamId LEFT JOIN team a ON a.teamId=m.aTeamId LEFT JOIN league l ON m.leagueId=l.leagueId AND m.sportId=l.sportId WHERE s.`updated_at` BETWEEN '"+now_5min.In(local1).Format("2006-01-02 15:04:05")+"' AND '"+now.In(local1).Format("2006-01-02 15:04:05")+"'", "stream_hbird_status")
+
+	}()
 
 	wg.Wait()
 	temp_room_data := <-room_data
 	temp_nami_data := <-nami_data
 	temp_armenia_data := <-armenia_data
+	temp_hbird_data := <-hbird_data
 
 	//esult = append(result,temp_room_data)
 	//result = append(result,temp_nami_data)
@@ -94,7 +100,7 @@ func DB_Handler() lib.Data {
 	result = lib.MergeSlice(result, temp_room_data)
 	result = lib.MergeSlice(result, temp_nami_data)
 	result = lib.MergeSlice(result, temp_armenia_data)
-
+	result = lib.MergeSlice(result, temp_hbird_data)
 	defer db.Close()
 	return result
 	/*
@@ -212,6 +218,28 @@ func query(wg *sync.WaitGroup, db *sql.DB, sqlexpression string, table string) l
 				log.Fatal(err)
 			}
 			fmt.Printf("prikey: %v, sportName : %s ,matchId :%d ,roomId: %s ,locationId: %s , statecategory: %v ,score: %v , updated_at: %v , leagueid: %v \n", prikey.Int64, sportName, matchId, spacialID, locationId, statecategory, score, update_time, level)
+
+			var tempdatum lib.Datum
+			tempdatum.SetLocationID(locationId)
+			tempdatum.SetLocation(locationMapping[locationId])
+			tempdatum.SetMatchID(matchId)
+			tempdatum.SetSpecialID(spacialID)
+			tempdatum.SetStateCategory(statecategory)
+			tempdatum.SetScore(score)
+			tempdatum.SetDBtable(table)
+			tempdatum.SetPriKey(strconv.FormatInt(prikey.Int64, 10))
+			tempdatum.SetSportName(sportName)
+			tempdatum.SetStreamAPIStatus(1)
+			tempdatum.SetLevel(level)
+			data2 = append(data2, tempdatum)
+		}
+	case "stream_hbird_status":
+		for rows.Next() {
+			if err := rows.Scan(&sportName, &matchId, &spacialID, &locationId, &score, &statecategory, &update_time, &prikey, &level); err != nil {
+				log.Println("------error---------")
+				log.Fatal(err)
+			}
+			fmt.Printf("prikey: %v, sportName : %s ,matchId :%d ,hbirdId: %s ,locationId: %s , statecategory: %v ,score: %v , updated_at: %v , leagueid: %v \n", prikey.Int64, sportName, matchId, spacialID, locationId, statecategory, score, update_time, level)
 
 			var tempdatum lib.Datum
 			tempdatum.SetLocationID(locationId)
